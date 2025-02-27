@@ -26,8 +26,12 @@ channel.QueueBind(queueName, exchangeName, routingKey);
 
 // Send Simple message
 
-byte[] messageBodyBytes = Encoding.UTF8.GetBytes("Hello Mehedi");
-channel.BasicPublish(exchangeName, routingKey, null, messageBodyBytes);
+for(int i = 0; i < 100; i++)
+{
+    Console.WriteLine("Send Message " + i);
+    byte[] messageBodyBytes = Encoding.UTF8.GetBytes($"Message #{i}");
+    channel.BasicPublish(exchangeName, routingKey, null, messageBodyBytes);
+}
 
 channel.Close();
 cnn.Close();

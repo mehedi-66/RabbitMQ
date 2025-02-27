@@ -110,3 +110,191 @@ cnn.Close();
 
 <img src="img/012.png">
 <img src="img/013.png">
+
+- only send message queue hold this message
+- if any message receiver then get this message and Resolve it 
+
+
+### Create Rabbit Receiver 1
+
+- for Event listener always to listen for messages
+- if console applicaiton enter key press to off the receiver event listener
+
+```C# 
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System.Text;
+
+ConnectionFactory factory = new();
+
+// Access user and pass of RabbitMQ which is running in docker 
+// doccker sender and receiver port is 5672
+
+factory.Uri = new Uri("amqp://guest:guest@localhost:5672");
+
+factory.ClientProvidedName = "Rabbit Receiver1 App";
+
+IConnection cnn = factory.CreateConnection();
+
+IModel channel = cnn.CreateModel();
+
+string exchangeName = "DemoExchange";
+string routingKey = "demo-routing-key";
+string queueName = "DemoQueue";
+
+// Make channel and Bind that channel 
+
+channel.ExchangeDeclare(exchangeName, ExchangeType.Direct);
+channel.QueueDeclare(queueName, false, false, false, null);
+channel.QueueBind(queueName, exchangeName, routingKey);
+channel.BasicQos(0, 1, false);
+              // prefeachSize, prefeachCount, global
+              // Qoudas 
+
+// Received 
+var consumer = new EventingBasicConsumer(channel);
+
+consumer.Received += (sender, args) =>
+{
+    var body = args.Body.ToArray();
+    string message = Encoding.UTF8.GetString(body);
+
+    Console.WriteLine($"Received Message: {message}");
+    channel.BasicAck(args.DeliveryTag, false);
+    // ack only 1 message 
+    // withour ack RabbitMQ not delete the message from their 
+};
+
+string consumerTag = channel.BasicConsume(queueName, false, consumer);
+
+Console.ReadLine();
+
+channel.BasicCancel(consumerTag);
+
+channel.Close();
+cnn.Close();
+```
+
+
+
+### All Code togeher with Large Message
+
+- Sender side 
+
+```C#
+using RabbitMQ.Client;
+using System.Text;
+
+ConnectionFactory factory = new();
+
+// Access user and pass of RabbitMQ which is running in docker 
+// doccker sender and receiver port is 5672
+
+factory.Uri = new Uri("amqp://guest:guest@localhost:5672");
+
+factory.ClientProvidedName = "Rabbit Sender App";
+
+IConnection cnn = factory.CreateConnection();
+
+IModel channel = cnn.CreateModel();
+
+string exchangeName = "DemoExchange";
+string routingKey = "demo-routing-key";
+string queueName = "DemoQueue";
+
+// Make channel and Bind that channel 
+
+channel.ExchangeDeclare(exchangeName, ExchangeType.Direct);
+channel.QueueDeclare(queueName, false, false, false, null);
+channel.QueueBind(queueName, exchangeName, routingKey);
+
+// Send Simple message
+
+for(int i = 0; i < 100; i++)
+{
+    Console.WriteLine("Send Message " + i);
+    byte[] messageBodyBytes = Encoding.UTF8.GetBytes($"Message #{i}");
+    channel.BasicPublish(exchangeName, routingKey, null, messageBodyBytes);
+}
+
+channel.Close();
+cnn.Close();
+
+```
+
+- Receiver 1 Side code 
+
+```C#
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System.Text;
+
+ConnectionFactory factory = new();
+
+// Access user and pass of RabbitMQ which is running in docker 
+// doccker sender and receiver port is 5672
+
+factory.Uri = new Uri("amqp://guest:guest@localhost:5672");
+
+factory.ClientProvidedName = "Rabbit Receiver1 App";
+
+IConnection cnn = factory.CreateConnection();
+
+IModel channel = cnn.CreateModel();
+
+string exchangeName = "DemoExchange";
+string routingKey = "demo-routing-key";
+string queueName = "DemoQueue";
+
+// Make channel and Bind that channel 
+
+channel.ExchangeDeclare(exchangeName, ExchangeType.Direct);
+channel.QueueDeclare(queueName, false, false, false, null);
+channel.QueueBind(queueName, exchangeName, routingKey);
+channel.BasicQos(0, 1, false);
+// prefeachSize, prefeachCount, global
+// Qoudas 
+
+// Received 
+var consumer = new EventingBasicConsumer(channel);
+
+consumer.Received += (sender, args) =>
+{
+    Task.Delay(TimeSpan.FromSeconds(1)).Wait();
+
+    var body = args.Body.ToArray();
+    string message = Encoding.UTF8.GetString(body);
+
+    Console.WriteLine($"Received Message: {message}");
+    channel.BasicAck(args.DeliveryTag, false);
+    // ack only 1 message 
+    // withour ack RabbitMQ not delete the message from their 
+};
+
+string consumerTag = channel.BasicConsume(queueName, false, consumer);
+
+Console.ReadLine();
+
+channel.BasicCancel(consumerTag);
+
+channel.Close();
+cnn.Close();
+```
+
+### Here two Receiver 1 & 2 
+
+- we can multiple Receiver 
+- we can send and receive multiple 
+- At a time they can read and send message to RabbitMQ
+
+
+<img src="img/014.png">
+
+- 1 sender and 2 receiver
+
+<img src="img/015.png">
+
+- lot number of message is coming and slow prcessing
+- see the status 
+
+<img src="img/016.png">
